@@ -1,0 +1,10 @@
+---
+repo_org: "availproject"
+repo_name: "avail"
+binary_path_dest: "/usr/local/bin/"
+binary:
+  - binary: "x86_64-ubuntu-2404-avail-node.tar.gz"
+    dest_path: "/usr/local/bin/"
+service_name: "availd"
+file_owner: "avail"
+file_group: "avail"

@@ -1,0 +1,2 @@
+bifrost-kusama-val-001 ansible_host="192.168.1.260" service_name="bifrost-kusama"
+bifrost-polkadot-val-001 ansible_host="192.168.1.260" service_name="bifrost-polkadot"

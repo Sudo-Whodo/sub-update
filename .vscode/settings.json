@@ -1,0 +1,7 @@
+{
+  "ansible.validation.lint.arguments": "-c .config/.ansible-lint",
+  "files.associations": {
+    "**/roles/**/*.yml": "ansible",
+    "**/playbook/**/*.yml": "ansible"
+  }
+}

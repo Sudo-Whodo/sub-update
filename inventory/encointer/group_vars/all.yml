@@ -1,0 +1,9 @@
+---
+repo_org: "encointer"
+repo_name: "encointer-parachain"
+binary:
+  - binary: "encointer-collator"
+    dest_path: "/usr/local/bin/"
+file_owner: "{{ service_name }}"
+file_group: "{{ service_name }}"
+service_name: "encointer"

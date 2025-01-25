@@ -1,0 +1,11 @@
+---
+repo_org: "bifrost-io"
+repo_name: "bifrost"
+binary_path_dest: "/usr/local/bin/"
+binary:
+  - binary: "bifrost"
+    dest_path: "/usr/local/bin/"
+    binary_rename: "{{ service_name }}"
+file_owner: "{{ service_name }}"
+file_group: "{{ service_name }}"
+application_version: "bifrost-v0.16.1"
