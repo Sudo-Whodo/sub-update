@@ -1,0 +1,143 @@
+---
+- name: Deploy GitHub Binaries
+  hosts: all
+  become: true
+  serial: 1
+  tasks:
+    ####################################################################
+    # 1) Pull application_version from GitHub if "latest" or undefined
+    ####################################################################
+    - name: Pull latest release (token-based)
+      when:
+        - github_token is defined
+        - (application_version is not defined or application_version == 'latest')
+      check_mode: false
+      block:
+        - name: Get latest release via GitHub token
+          community.general.github_release:
+            token: "{{ github_token }}"
+            user: "{{ repo_org }}"
+            repo: "{{ repo_name }}"
+            action: latest_release
+          register: github_release
+          delegate_to: localhost
+          become: false
+
+        - name: Show the GitHub release info
+          ansible.builtin.debug:
+            msg: "{{ github_release }}"
+
+        - name: Set application_version from GitHub release (with token)
+          ansible.builtin.set_fact:
+            application_version: "{{ github_release.tag }}"
+
+    - name: Pull latest release (no token)
+      when:
+        - github_token is not defined
+        - (application_version is not defined or application_version == 'latest')
+      check_mode: false
+      block:
+        - name: Determine latest GitHub release
+          ansible.builtin.uri:
+            url: "https://api.github.com/repos/{{ repo_org }}/{{ repo_name }}/releases/latest"
+            body_format: json
+            mode: "0600"
+          register: github_release
+          until: github_release.status == 200
+          retries: 5
+          delegate_to: localhost
+          become: false
+
+        - name: Set application_version from GitHub release (no token)
+          ansible.builtin.set_fact:
+            application_version: "{{ github_release.json.tag_name }}"
+
+    ####################################################################
+    # 2) Download / Unarchive / Copy Binaries
+    #
+    #    - If "application_version" is explicitly set (e.g. -e application_version=1.2.3),
+    #      the above blocks are skipped and we just use that version.
+    #
+    #    - In check mode, these tasks will show what WOULD happen but won't
+    #      actually modify files, unless you explicitly allow changes in check mode.
+    ####################################################################
+    - name: Download and unarchive
+      block:
+        - name: Download Binary from GitHub
+          ansible.builtin.get_url:
+            url: "https://github.com/{{ repo_org }}/{{ repo_name }}/releases/download/{{ application_version }}/{{ item.binary }}"
+            dest: "/tmp/{{ item.binary }}"
+            mode: "0600"
+            owner: "{{ file_owner }}"
+            group: "{{ file_group }}"
+            force: true
+          loop: "{{ binary | flatten }}"
+
+        - name: Unarchive if needed
+          ansible.builtin.unarchive:
+            remote_src: true
+            src: "/tmp/{{ item.binary }}"
+            dest: "{{ item.dest_path }}"
+            owner: "{{ file_owner }}"
+            group: "{{ file_group }}"
+            mode: "u=rwx,g=rwx,o=rx"
+          when: '".gz" in item.binary'
+          loop: "{{ binary | flatten }}"
+
+    - name: Copy binary
+      ansible.builtin.copy:
+        src: "/tmp/{{ item.binary }}"
+        remote_src: true
+        dest: "{{ item.dest_path }}{{ item.binary_rename | default(item.binary) }}"
+        owner: "{{ file_owner }}"
+        group: "{{ file_group }}"
+        mode: "u=rwx,g=rwx,o=rx"
+        force: true
+      loop: "{{ binary | flatten }}"
+      notify:
+        - Restart application
+      register: config_result
+
+    ####################################################################
+    # 3) Optional: Download chain spec
+    ####################################################################
+    - name: Download chain spec
+      ansible.builtin.get_url:
+        url: "{{ chain_spec_url }}"
+        dest: "{{ chain_spec_dest }}"
+        owner: "{{ file_owner }}"
+        group: "{{ file_group }}"
+        mode: "02775"
+      when: chain_spec is defined
+
+    ####################################################################
+    # 4) Post-deployment checks if changed
+    ####################################################################
+    - name: Binary was updated
+      when: config_result.changed
+      block:
+        - name: Flush handlers now
+          ansible.builtin.meta: flush_handlers
+
+        - name: Pause for 60 seconds after handlers
+          ansible.builtin.pause:
+            seconds: 60
+          when: config_result.changed
+
+        - name: Check service status
+          ansible.builtin.systemd:
+            name: "{{ service_name }}"
+            state: started
+          register: service_status
+          when: config_result.changed
+
+        - name: Fail if service is not running
+          ansible.builtin.fail:
+            msg: "{{ service_name }} is not running as expected."
+          when: service_status.status["ActiveState"] != "active"
+
+  handlers:
+    - name: Restart application
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+        state: restarted

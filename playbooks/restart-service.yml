@@ -1,0 +1,15 @@
+---
+- name: Restart a systemctl service
+  hosts: all
+  gather_facts: false
+  become: true
+  serial: 1
+  tasks:
+    - name: Daemon reload
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart application
+      ansible.builtin.systemd:
+        state: restarted
+        name: "{{ service_name }}"

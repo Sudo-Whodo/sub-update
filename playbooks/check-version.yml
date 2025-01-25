@@ -1,0 +1,35 @@
+---
+- name: Check the service_name version and output
+  hosts: all
+  gather_facts: false
+  become: false
+  vars:
+    service_name: ""
+    rpc_port: "9933"
+  tasks:
+- name: Check service and print version
+  hosts: all
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Ensure myservice is started
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+      register: service_status
+
+    - name: Query Polkadot RPC for version
+      ansible.builtin.uri:
+        url: "http://localhost:{{ rpc_port }}"
+        method: POST
+        body_format: json
+        body:
+          jsonrpc: "2.0"
+          method: "system_version"
+          params: []
+          id: 1
+        return_content: true
+      register: rpc_response
+
+    - name: Display the version
+      ansible.builtin.debug:
+        msg: "{{ service_name }} status: [{{ service_status.status.ActiveState }}] version: {{ rpc_response.json.result }}"

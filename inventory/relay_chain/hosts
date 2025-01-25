@@ -1,0 +1,10 @@
+[paseo]
+paseo-val-001 ansible_host="192.168.1.260"  service_name="paseo"
+
+
+[kusama]
+kusama-boot-001 ansible_host="192.168.1.260"  service_name="kusama"
+
+
+[polkadot]
+polkadot-rpc-002 ansible_host="192.168.1.260"  service_name="polkadot"

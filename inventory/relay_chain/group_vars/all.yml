@@ -1,0 +1,12 @@
+repo_org: "paritytech"
+repo_name: "polkadot-sdk"
+binary_path_dest: "/usr/local/bin/"
+binary:
+  - binary: "polkadot"
+    dest_path: "/usr/local/bin/"
+  - binary: "polkadot-prepare-worker"
+    dest_path: "/usr/local/bin/"
+  - binary: "polkadot-execute-worker"
+    dest_path: "/usr/local/bin/"
+file_owner: "{{ service_name }}"
+file_group: "{{ service_name }}"
